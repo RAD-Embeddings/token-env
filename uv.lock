@@ -74,8 +74,8 @@ wheels = [
 
 [[package]]
 name = "token-env"
-version = "0.1.0"
-source = { virtual = "." }
+version = "0.2.1"
+source = { editable = "." }
 dependencies = [
     { name = "gymnasium" },
     { name = "numpy" },
@@ -84,7 +84,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "gymnasium", specifier = ">=1.0.0" },
-    { name = "numpy", specifier = ">=2.2.1" },
+    { name = "numpy", specifier = ">=1.20" },
 ]
 
 [[package]]

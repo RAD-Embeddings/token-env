@@ -1,12 +1,12 @@
 [project]
 name = "token-env"
-version = "0.1.0"
+version = "0.2.1"
 description = "Gymnasium grid environment with random tokens"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "gymnasium>=1.0.0",
-    "numpy>=2.2.1",
+    "numpy>=1.20",
 ]
 
 [build-system]
