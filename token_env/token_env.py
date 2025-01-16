@@ -10,7 +10,8 @@ class TokenEnv(gym.Env):
         n_tokens: int = 10,
         size: tuple[int, int] = (7, 7),
         timeout: int = 100,
-        use_fixed_map: bool = False
+        use_fixed_map: bool = False,
+        slip_prob: tuple[float, float] = (0.0, 0.0)
     ):
         super().__init__()
         assert size[0] % 2 == 1 and size[1] % 2 == 1
@@ -18,11 +19,12 @@ class TokenEnv(gym.Env):
         self.size = size
         self.timeout = timeout
         self.use_fixed_map = use_fixed_map
+        self.slip_prob = slip_prob
         self.action_space = spaces.Discrete(4)
         self.observation_space = spaces.Box(low=0, high=1, shape=(self.n_tokens, *self.size), dtype=np.uint8)
         self.t = 0
         self.agent = None
-        self.action_map = {0: (0, 1), 1: (1, 0), 2: (0, -1), 3: (-1, 0)}
+        self.action_map = {0: (1, 0), 1: (0, 1), 2: (-1, 0), 3: (0, -1)}
         if self.use_fixed_map:
             np.random.seed(42)
             _, self.tokens = self._sample_map()
@@ -40,8 +42,10 @@ class TokenEnv(gym.Env):
 
     def step(self, action: int) -> tuple[np.ndarray, int, bool, bool, dict[str, Any]]:
         dx, dy = self.action_map[action]
-        agent_x = (self.agent[0] + dx + self.size[0]) % self.size[0]
-        agent_y = (self.agent[1] + dy + self.size[1]) % self.size[1]
+        dx_slip = int(np.sign(self.slip_prob[0])) if np.random.random() < abs(self.slip_prob[0]) else 0
+        dy_slip = int(np.sign(self.slip_prob[1])) if np.random.random() < abs(self.slip_prob[0]) else 0
+        agent_x = (self.agent[0] + dx + dx_slip + self.size[0]) % self.size[0]
+        agent_y = (self.agent[1] + dy + dy_slip + self.size[1]) % self.size[1]
         self.agent = (agent_x, agent_y)
         obs = self._get_obs()
         reward = 0

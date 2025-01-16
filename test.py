@@ -2,7 +2,8 @@ import token_env
 import gymnasium as gym
 
 def test(env_id: str):
-    env = gym.make(env_id)
+    # env = gym.make(env_id)
+    env = token_env.TokenEnv(slip_prob=(1.0, 0.0))
     obs, info = env.reset()
     done = False
     i = 0
