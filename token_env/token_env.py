@@ -26,9 +26,7 @@ class TokenEnv(gym.Env):
         self.agent = None
         self.action_map = {0: (1, 0), 1: (0, 1), 2: (-1, 0), 3: (0, -1)}
         if self.use_fixed_map:
-            np.random.seed(42)
             _, self.tokens = self._sample_map()
-            np.random.seed(None)
 
     def reset(self, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[np.ndarray, dict[str, Any]]:
         np.random.seed(seed)
