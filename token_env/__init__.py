@@ -11,3 +11,9 @@ register(
     id = "TokenEnv-v1",
     entry_point = "token_env.token_env:TokenEnv"
 )
+
+register(
+    id = "TokenEnv-v1-fixed",
+    entry_point = "token_env.token_env:TokenEnv",
+    kwargs = {"use_fixed_map": True}
+)

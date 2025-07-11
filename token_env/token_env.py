@@ -26,7 +26,8 @@ class TokenEnv(gym.Env):
         self.agent = None
         self.action_map = {0: (1, 0), 1: (0, 1), 2: (-1, 0), 3: (0, -1)}
         if self.use_fixed_map:
-            _, self.tokens = self._sample_map()
+            # _, self.tokens = self._sample_map()
+            self.tokens = [(0, np.array([5, 5])), (1, np.array([2, 4])), (2, np.array([3, 5])), (3, np.array([2, 2])), (4, np.array([0, 2])), (5, np.array([6, 4])), (6, np.array([0, 5])), (7, np.array([5, 1])), (8, np.array([6, 2])), (9, np.array([2, 3])), (0, np.array([0, 1])), (1, np.array([3, 0])), (2, np.array([5, 0])), (3, np.array([0, 0])), (4, np.array([1, 4])), (5, np.array([2, 0])), (6, np.array([4, 2])), (7, np.array([5, 4])), (8, np.array([3, 1])), (9, np.array([1, 1]))]
 
     def reset(self, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[np.ndarray, dict[str, Any]]:
         np.random.seed(seed)
