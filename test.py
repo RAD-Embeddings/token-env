@@ -3,7 +3,7 @@ import gymnasium as gym
 
 def test(env_id: str):
     # env = gym.make(env_id)
-    env = token_env.TokenEnv(slip_prob=(1.0, 0.0))
+    env = token_env.TokenEnv(slip_prob=(1.0, 0.0), use_fixed_map=True)
     obs, info = env.reset()
     done = False
     i = 0
