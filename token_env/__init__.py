@@ -1,5 +1,4 @@
 from token_env.token_env import *
-from token_env.utils import *
 from gymnasium.envs.registration import register
 
 register(
