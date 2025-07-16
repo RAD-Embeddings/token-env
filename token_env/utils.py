@@ -3,13 +3,13 @@ from token_env import TokenEnv
 from pettingzoo.utils import ParallelEnv
 
 
-def gym2zoo(env: TokenEnv):
+def gym2zoo(env):
     return ParallelTokenEnv(env)
 
 class ParallelTokenEnv(ParallelEnv):
     metadata = {"render_modes": [], "name": "parallel_token_env"}
 
-    def __init__(self, env: TokenEnv):
+    def __init__(self, env, render_mode: str | None = None):
         self._env = env
 
         # Copy over agent ordering and spaces
@@ -17,6 +17,7 @@ class ParallelTokenEnv(ParallelEnv):
         self.agents = self.possible_agents[:]
         self.action_spaces = self._env.action_space
         self.observation_spaces = self._env.observation_space
+        self.render_mode = render_mode
 
     def reset(self, seed=None, options=None):
         obs, infos = self._env.reset(seed=seed, options=options)

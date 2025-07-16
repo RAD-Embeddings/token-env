@@ -14,7 +14,8 @@ class TokenEnv(gym.Env):
         size: Tuple[int, int] = (7, 7),
         timeout: int = 100,
         use_fixed_map: bool = False,
-        slip_prob: Tuple[float, float] = (0.0, 0.0)
+        slip_prob: Tuple[float, float] = (0.0, 0.0),
+        render_mode: str | None = None
     ):
         super().__init__()
         assert size[0] % 2 == 1 and size[1] % 2 == 1, "Grid size must be odd"
@@ -27,6 +28,7 @@ class TokenEnv(gym.Env):
         self.timeout = timeout
         self.use_fixed_map = use_fixed_map
         self.slip_prob = slip_prob
+        self.render_mode = render_mode
 
         # Agent identifiers
         self.possible_agents = [f"agent_{i}" for i in range(self.n_agents)]
@@ -34,9 +36,14 @@ class TokenEnv(gym.Env):
         self.action_space: Union[gym.spaces.Space, Dict[str, gym.spaces.Space]] = gym.spaces.Discrete(4) if self.n_agents == 1 else gym.spaces.Dict({
             agent: gym.spaces.Discrete(4) for agent in self.possible_agents
         })
+        # self.observation_space: Union[gym.spaces.Space, Dict[str, gym.spaces.Space]] = gym.spaces.Box(low=0, high=1, shape=(self.n_tokens, *self.size), dtype=np.uint8) if self.n_agents == 1 else gym.spaces.Dict({
+        #     agent: gym.spaces.Box(
+        #         low=0, high=1, shape=(self.n_tokens + self.n_agents - 1, *self.size), dtype=np.uint8
+        #     ) for agent in self.possible_agents
+        # })
         self.observation_space: Union[gym.spaces.Space, Dict[str, gym.spaces.Space]] = gym.spaces.Box(low=0, high=1, shape=(self.n_tokens, *self.size), dtype=np.uint8) if self.n_agents == 1 else gym.spaces.Dict({
             agent: gym.spaces.Box(
-                low=0, high=1, shape=(self.n_tokens + self.n_agents - 1, *self.size), dtype=np.uint8
+                low=0, high=1, shape=(self.n_tokens, *self.size), dtype=np.uint8
             ) for agent in self.possible_agents
         })
 
@@ -58,6 +65,7 @@ class TokenEnv(gym.Env):
 
         self.t = 0
         observations = self._get_obs()
+        # infos = {agent: {"episode": {"l": self.t, "r": 0}} for agent in self.agents}
         infos = {agent: {} for agent in self.agents}
 
         return (list(observations.values())[0] if self.n_agents == 1 else observations,
@@ -73,6 +81,8 @@ class TokenEnv(gym.Env):
         Dict[str, bool],
         Dict[str, Dict[str, Any]]
     ]:
+        if isinstance(actions, dict):
+            self.agents = list(actions.keys())
         # Update positions
         for agent in self.agents:
             act = actions if self.n_agents == 1 else actions[agent]
@@ -91,13 +101,15 @@ class TokenEnv(gym.Env):
 
         rewards = {}
         for agent in self.agents:
-            if all(other_agent == agent or any(self.agent_positions[agent] != self.agent_positions[other_agent]) for other_agent in self.agents):
-                rewards[agent] = 0
-            else:
-                rewards[agent] = -1 # Collision with another agent!
+            rewards[agent] = 0
+            # if all(other_agent == agent or any(self.agent_positions[agent] != self.agent_positions[other_agent]) for other_agent in self.agents):
+            #     rewards[agent] = 0
+            # else:
+            #     rewards[agent] = -1 # Collision with another agent!
 
         terminations = {agent: self.t >= self.timeout or rewards[agent] == -1 for agent in self.agents}
         truncations = {agent: False for agent in self.agents}
+        # infos = {agent: {"episode": {"l": self.t, "r": rewards[agent]}} for agent in self.agents}
         infos = {agent: {} for agent in self.agents}
 
         self.agents = [agent for agent in self.agents if not terminations[agent] and not truncations[agent]]
@@ -112,15 +124,17 @@ class TokenEnv(gym.Env):
         center = np.array([s // 2 for s in self.size])
         observations: Dict[str, np.ndarray] = {}
 
-        for agent in self.agents:
-            obs = np.zeros((self.n_tokens + self.n_agents - 1, *self.size), dtype=np.uint8)
-            delta = center - self.agent_positions[agent]
-            for token in self.token_positions:
-                for xy in self.token_positions[token]:
-                    rel = (xy + delta) % self.size
-                    obs[token, rel[0], rel[1]] = 1
-            for idx, other_agent in enumerate(set(self.agents) - set([agent])):
-                obs[self.n_tokens + idx, self.agent_positions[other_agent][0], self.agent_positions[other_agent][1]] = 1
+        for agent in self.possible_agents:
+            # obs = np.zeros((self.n_tokens + self.n_agents - 1, *self.size), dtype=np.uint8)
+            obs = np.zeros((self.n_tokens, *self.size), dtype=np.uint8)
+            if agent in self.agents:
+                delta = center - self.agent_positions[agent]
+                for token in self.token_positions:
+                    for xy in self.token_positions[token]:
+                        rel = (xy + delta) % self.size
+                        obs[token, rel[0], rel[1]] = 1
+                # for idx, other_agent in enumerate(set(self.agents) - set([agent])):
+                #     obs[self.n_tokens + idx, self.agent_positions[other_agent][0], self.agent_positions[other_agent][1]] = 1
 
             observations[agent] = obs
 
@@ -142,7 +156,8 @@ class TokenEnv(gym.Env):
         indices = np.random.choice(grid.shape[0], total, replace=False)
         samples = grid[indices]
 
-        agents = {agent: samples[i] for i, agent in enumerate(self.agents)}
+        # agents = {agent: samples[i] for i, agent in enumerate(self.agents)}
+        agents = {agent: samples[0] for _, agent in enumerate(self.agents)}
         token_samples = samples[self.n_agents:]
         np.random.shuffle(token_samples)
         tokens = {token: [] for token in range(self.n_tokens)}
