@@ -31,10 +31,16 @@ class TokenEnv(gym.Env):
         self.render_mode = render_mode
 
         # Agent identifiers
-        self.possible_agents = [f"agent_{i}" for i in range(self.n_agents)]
+        self.possible_agents = {f"agent_{i}" for i in range(self.n_agents)}
 
-        self.action_space: Union[gym.spaces.Space, Dict[str, gym.spaces.Space]] = gym.spaces.Discrete(4) if self.n_agents == 1 else gym.spaces.Dict({
-            agent: gym.spaces.Discrete(4) for agent in self.possible_agents
+        # Internal state
+        self.t = 0
+        self.action_map = {0: (1, 0), 1: (0, 1), 2: (-1, 0), 3: (0, -1), 4: (0, 0)}
+        self.agent_positions: Dict[str, np.ndarray] = {}
+        self.token_positions: Dict[int, Sequence[np.ndarray]] = {}
+
+        self.action_space: Union[gym.spaces.Space, Dict[str, gym.spaces.Space]] = gym.spaces.Discrete(len(self.action_map)) if self.n_agents == 1 else gym.spaces.Dict({
+            agent: gym.spaces.Discrete(len(self.action_map)) for agent in self.possible_agents
         })
         # self.observation_space: Union[gym.spaces.Space, Dict[str, gym.spaces.Space]] = gym.spaces.Box(low=0, high=1, shape=(self.n_tokens, *self.size), dtype=np.uint8) if self.n_agents == 1 else gym.spaces.Dict({
         #     agent: gym.spaces.Box(
@@ -47,12 +53,6 @@ class TokenEnv(gym.Env):
             ) for agent in self.possible_agents
         })
 
-        # Internal state
-        self.t = 0
-        self.action_map = {0: (1, 0), 1: (0, 1), 2: (-1, 0), 3: (0, -1)}
-        self.agent_positions: Dict[str, np.ndarray] = {}
-        self.token_positions: Dict[int, Sequence[np.ndarray]] = {}
-
     def reset(
         self,
         seed: int | None = None,
@@ -60,12 +60,12 @@ class TokenEnv(gym.Env):
     ) -> Dict[str, np.ndarray]:
         np.random.seed(seed)
 
-        self.agents = self.possible_agents[:] # Do this before calling _sample_map
+        self.agents = self.possible_agents.copy() # Do this before calling _sample_map
         self.agent_positions, self.token_positions = self._sample_map()
 
         self.t = 0
         observations = self._get_obs()
-        # infos = {agent: {"episode": {"l": self.t, "r": 0}} for agent in self.agents}
+        # infos = {agent: {"episode_length": self.t} for agent in self.agents}
         infos = {agent: {} for agent in self.agents}
 
         return (list(observations.values())[0] if self.n_agents == 1 else observations,
@@ -81,8 +81,10 @@ class TokenEnv(gym.Env):
         Dict[str, bool],
         Dict[str, Dict[str, Any]]
     ]:
-        if isinstance(actions, dict):
-            self.agents = list(actions.keys())
+        # A wrapper might kill an agent so update the list
+        # if isinstance(actions, dict):
+        #     self.agents = self.agents.intersection(set(actions.keys())).copy()
+
         # Update positions
         for agent in self.agents:
             act = actions if self.n_agents == 1 else actions[agent]
@@ -91,9 +93,14 @@ class TokenEnv(gym.Env):
             dx_slip = int(np.sign(self.slip_prob[0])) if np.random.random() < abs(self.slip_prob[0]) else 0
             dy_slip = int(np.sign(self.slip_prob[1])) if np.random.random() < abs(self.slip_prob[1]) else 0
 
+            # print(agent)
+            # print(self.agent_positions[agent])
             pos = self.agent_positions[agent]
             self.agent_positions[agent][0] = (pos[0] + dx + dx_slip) % self.size[0]
             self.agent_positions[agent][1] = (pos[1] + dy + dy_slip) % self.size[1]
+            # print(dx, dy)
+            # print(self.agent_positions[agent])
+            # input()
 
         self.t += 1
 
@@ -109,10 +116,10 @@ class TokenEnv(gym.Env):
 
         terminations = {agent: self.t >= self.timeout or rewards[agent] == -1 for agent in self.agents}
         truncations = {agent: False for agent in self.agents}
-        # infos = {agent: {"episode": {"l": self.t, "r": rewards[agent]}} for agent in self.agents}
+        # infos = {agent: {"episode_length": self.t} for agent in self.agents}
         infos = {agent: {} for agent in self.agents}
 
-        self.agents = [agent for agent in self.agents if not terminations[agent] and not truncations[agent]]
+        # self.agents = {agent for agent in self.agents if not terminations[agent] and not truncations[agent]}
 
         return (list(observations.values())[0] if self.n_agents == 1 else observations,
                 list(rewards.values())[0] if self.n_agents == 1 else rewards,
@@ -124,18 +131,16 @@ class TokenEnv(gym.Env):
         center = np.array([s // 2 for s in self.size])
         observations: Dict[str, np.ndarray] = {}
 
-        for agent in self.possible_agents:
+        for agent in self.agents:
             # obs = np.zeros((self.n_tokens + self.n_agents - 1, *self.size), dtype=np.uint8)
             obs = np.zeros((self.n_tokens, *self.size), dtype=np.uint8)
-            if agent in self.agents:
-                delta = center - self.agent_positions[agent]
-                for token in self.token_positions:
-                    for xy in self.token_positions[token]:
-                        rel = (xy + delta) % self.size
-                        obs[token, rel[0], rel[1]] = 1
-                # for idx, other_agent in enumerate(set(self.agents) - set([agent])):
-                #     obs[self.n_tokens + idx, self.agent_positions[other_agent][0], self.agent_positions[other_agent][1]] = 1
-
+            delta = center - self.agent_positions[agent]
+            for token in self.token_positions:
+                for xy in self.token_positions[token]:
+                    rel = (xy + delta) % self.size
+                    obs[token, rel[0], rel[1]] = 1
+            # for idx, other_agent in enumerate(set(self.agents) - set([agent])):
+            #     obs[self.n_tokens + idx, self.agent_positions[other_agent][0], self.agent_positions[other_agent][1]] = 1
             observations[agent] = obs
 
         return observations
@@ -157,7 +162,7 @@ class TokenEnv(gym.Env):
         samples = grid[indices]
 
         # agents = {agent: samples[i] for i, agent in enumerate(self.agents)}
-        agents = {agent: samples[0] for _, agent in enumerate(self.agents)}
+        agents = {agent: samples[0].copy() for _, agent in enumerate(self.agents)} # Have to copy!!
         token_samples = samples[self.n_agents:]
         np.random.shuffle(token_samples)
         tokens = {token: [] for token in range(self.n_tokens)}
@@ -168,6 +173,30 @@ class TokenEnv(gym.Env):
             np.random.set_state(old_state)
 
         return agents, tokens
+
+    def render(self, agent=None):
+        empty_cell = " . "
+        base_grid = np.full(self.size, empty_cell, dtype='U3')
+        for token, positions in self.token_positions.items():
+            for pos in positions:
+                base_grid[pos[0], pos[1]] = " " + str(token) + " "
+        
+        agents = self.agents if agent is None else [agent]
+
+        for agent in agents:
+            grid = base_grid.copy()
+            pos = self.agent_positions[agent]
+            if grid[pos[0], pos[1]] == empty_cell:
+                grid[pos[0], pos[1]] = " A "
+            else:
+                grid[pos[0], pos[1]] = "A@" + grid[pos[0], pos[1]].strip()
+
+            print(f"Agent {agent} MDP:")
+            print("------" * self.size[0])
+            for row in grid:
+                print("| " + " | ".join(row) + " |")
+                print("------" * self.size[0])
+            print()
 
     @staticmethod
     def label_f(obs: Union[np.ndarray, Dict[str, np.ndarray]]) -> Union[int, Sequence[Union[int, None]], None]:
