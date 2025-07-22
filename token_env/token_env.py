@@ -5,7 +5,7 @@ from typing import Any, Sequence, Tuple, Dict, Union
 COLLISION_REWARD = -1e2
 
 class TokenEnv(gym.Env):
-    metadata = {"render_modes": [], "name": "token_env"}
+    metadata = {"render_modes": ["human", "ansi"], "name": "token_env"}
 
     def __init__(
         self,
@@ -16,11 +16,12 @@ class TokenEnv(gym.Env):
         timeout: int = 100,
         use_fixed_map: bool = False,
         slip_prob: Tuple[float, float] = (0.0, 0.0),
-        render_mode: str | None = None
+        render_mode: str = "human"
     ):
         super().__init__()
         assert size[0] % 2 == 1 and size[1] % 2 == 1, "Grid size must be odd"
         assert n_tokens * n_token_repeat <= size[0] * size[1], "Grid size is not large enough"
+        assert render_mode in self.metadata["render_modes"]
 
         self.n_agents = n_agents
         self.n_tokens = n_tokens
@@ -31,10 +32,8 @@ class TokenEnv(gym.Env):
         self.slip_prob = slip_prob
         self.render_mode = render_mode
 
-        # Agent identifiers
         self.possible_agents = [f"A_{i}" for i in range(self.n_agents)]
 
-        # Internal state
         self.t = 0
         self.action_map = {0: (1, 0), 1: (0, 1), 2: (-1, 0), 3: (0, -1), 4: (0, 0)}
         self.action_parser = {0: "DOWN", 1: "RIGHT", 2: "UP", 3: "LEFT", 4: "NOOP"}
@@ -49,11 +48,6 @@ class TokenEnv(gym.Env):
                 low=0, high=1, shape=(self.n_tokens + self.n_agents - 1, *self.size), dtype=np.uint8
             ) for agent in self.possible_agents
         })
-        # self.observation_space: Union[gym.spaces.Space, Dict[str, gym.spaces.Space]] = gym.spaces.Box(low=0, high=1, shape=(self.n_tokens, *self.size), dtype=np.uint8) if self.n_agents == 1 else gym.spaces.Dict({
-        #     agent: gym.spaces.Box(
-        #         low=0, high=1, shape=(self.n_tokens, *self.size), dtype=np.uint8
-        #     ) for agent in self.possible_agents
-        # })
 
     def reset(
         self,
@@ -166,12 +160,10 @@ class TokenEnv(gym.Env):
         empty_cell = "."
         grid = np.full(self.size, empty_cell, dtype=object)
 
-        # Place tokens
         for token, positions in self.token_positions.items():
             for pos in positions:
                 grid[pos[0], pos[1]] = f"{token}"
 
-        # Place agents
         for agent in self.possible_agents:
             pos = self.agent_positions[agent]
             current = grid[pos[0], pos[1]]
@@ -180,17 +172,20 @@ class TokenEnv(gym.Env):
             else:
                 grid[pos[0], pos[1]] = f"{agent},{current}"
 
-        # Compute the max width of any cell
         max_width = max(len(str(cell)) for row in grid for cell in row)
 
-        # Render the grid
+        out = ""
         h_line = "+" + "+".join(["-" * (max_width + 2) for _ in range(self.size[1])]) + "+"
-        print(h_line)
+        out += h_line + "\n"
         for row in grid:
             row_str = "| " + " | ".join(f"{str(cell):<{max_width}}" for cell in row) + " |"
-            print(row_str)
-            print(h_line)
-        print()
+            out += row_str + "\n"
+            out += h_line + "\n"
+
+        if self.render_mode == "human":
+            print(out)
+        else:
+            return out
 
     @staticmethod
     def label_f(obs: np.ndarray, n_tokens: int) -> int:
@@ -206,5 +201,4 @@ class TokenEnv(gym.Env):
             return COLLISION_REWARD
         else:
             return dfa_wrapper_reward
-
 
