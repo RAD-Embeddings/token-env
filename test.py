@@ -15,10 +15,7 @@ def test(env):
     while not done:
         # Sample actions
         action = env.action_space.sample()
-        if env.unwrapped.n_agents == 1:
-            print(env.unwrapped.action_parser[action])
-        else:
-            print({agent: env.unwrapped.action_parser[action[agent]] for agent in action})
+        print({agent: env.unwrapped.action_parser[action[agent]] for agent in action})
         obs, reward, terminated, truncated, info = env.step(action)
         temp = env.render()
         print(steps, reward, terminated, truncated, info)

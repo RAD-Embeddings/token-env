@@ -40,10 +40,10 @@ class TokenEnv(gym.Env):
         self.agent_positions: Dict[str, np.ndarray] = {}
         self.token_positions: Dict[int, Sequence[np.ndarray]] = {}
 
-        self.action_space: Union[gym.spaces.Space, Dict[str, gym.spaces.Space]] = gym.spaces.Discrete(len(self.action_map)) if self.n_agents == 1 else gym.spaces.Dict({
+        self.action_space: Dict[str, gym.spaces.Space] = gym.spaces.Dict({
             agent: gym.spaces.Discrete(len(self.action_map)) for agent in self.possible_agents
         })
-        self.observation_space: Union[gym.spaces.Space, Dict[str, gym.spaces.Space]] = gym.spaces.Box(low=0, high=1, shape=(self.n_tokens, *self.size), dtype=np.uint8) if self.n_agents == 1 else gym.spaces.Dict({
+        self.observation_space: Dict[str, gym.spaces.Space] = gym.spaces.Dict({
             agent: gym.spaces.Box(
                 low=0, high=1, shape=(self.n_tokens + self.n_agents - 1, *self.size), dtype=np.uint8
             ) for agent in self.possible_agents
@@ -63,22 +63,21 @@ class TokenEnv(gym.Env):
         observations = self._get_obs()
         infos = {agent: {} for agent in self.agents}
 
-        return (list(observations.values())[0] if self.n_agents == 1 else observations,
-                list(infos.values())[0] if self.n_agents == 1 else infos)
+        return observations, infos
 
     def step(
         self,
-        actions: Union[int, Dict[str, int]]
+        actions: Dict[str, int]
     ) -> Tuple[
         Dict[str, np.ndarray],
-        Dict[str, Union[int, float, None]],
+        Dict[str, Union[int, float]],
         Dict[str, bool],
         Dict[str, bool],
         Dict[str, Dict[str, Any]]
     ]:
         # Update positions
         for agent in self.agents:
-            act = actions if self.n_agents == 1 else actions[agent]
+            act = actions[agent]
 
             dx, dy = self.action_map[int(act)]
             dx_slip = int(np.sign(self.slip_prob[0])) if np.random.random() < abs(self.slip_prob[0]) else 0
@@ -105,11 +104,7 @@ class TokenEnv(gym.Env):
 
         self.t += 1
 
-        return (list(observations.values())[0] if self.n_agents == 1 else observations,
-                list(rewards.values())[0] if self.n_agents == 1 else rewards,
-                list(terminations.values())[0] if self.n_agents == 1 else terminations,
-                list(truncations.values())[0] if self.n_agents == 1 else truncations,
-                list(infos.values())[0] if self.n_agents == 1 else infos)
+        return observations, rewards, terminations, truncations, infos
 
     def _get_obs(self) -> Dict[str, np.ndarray]:
         center = np.array([s // 2 for s in self.size])
