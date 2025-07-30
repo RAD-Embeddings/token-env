@@ -7,7 +7,8 @@ import gymnasium as gym
 def test(env):
     key = jax.random.PRNGKey(30)
     # Reset env
-    obs, state = env.reset(key=key)
+    key, subkey = jax.random.split(key)
+    obs, state = env.reset(key=subkey)
     print("Initial State:", state)
     done = False
     steps = 0
@@ -15,19 +16,20 @@ def test(env):
 
     while not done:
         # Sample actions
-        # Key split???
-        action = env.action_space(params=env.default_params).sample(key=key)
+        # TODO: Key split???
+        key, subkey = jax.random.split(key)
+        action = env.action_space(params=env.default_params).sample(key=subkey)
         # print({agent: env.unwrapped.action_parser[action[agent]] for agent in action})
         print(action)
-        temp = env.step(action=action, state=state, key=key)
-        print(temp[1])
-        print(temp[2])
+        key, subkey = jax.random.split(key)
+        obs, state, rewards, done, info = env.step(action=action, state=state, key=subkey)
+        print("Step:", steps)
+        print(obs)
+        print(state)
+        print(rewards)
+        print(done)
         input(">>")
-        temp = env.render()
-        print(steps, reward, terminated, truncated, info)
-
-        done = ((all(terminated.values()) if isinstance(terminated, dict) else terminated)
-             or (all(truncated.values()) if isinstance(truncated, dict) else truncated))
+        # temp = env.render()
         steps += 1
 
     env.close()
