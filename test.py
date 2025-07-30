@@ -1,6 +1,5 @@
 import token_env
 import gymnasium as gym
-import supersuit as ss
 
 def test(env):
     # Initialize environment

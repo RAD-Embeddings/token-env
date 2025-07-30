@@ -3,9 +3,10 @@ name = "token-env"
 version = "0.2.4"
 description = "Gymnasium grid environment with random tokens"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 dependencies = [
     "gymnasium>=1.0.0",
+    "jaxmarl>=0.1.0",
     "numpy>=1.20",
 ]
 

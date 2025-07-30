@@ -1,4 +1,5 @@
 from token_env.token_env import *
+from token_env.token_env_jax import *
 from gymnasium.envs.registration import register
 
 register(
