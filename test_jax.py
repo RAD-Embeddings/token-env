@@ -32,8 +32,6 @@ def test(env):
         # temp = env.render()
         steps += 1
 
-    env.close()
-
 if __name__ == '__main__':
     test(env=token_env.TokenEnvJax())
 
