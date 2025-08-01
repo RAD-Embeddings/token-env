@@ -9,7 +9,8 @@ def test(env):
     # Reset env
     key, subkey = jax.random.split(key)
     obs, state = env.reset(key=subkey)
-    print("Initial State:", state)
+    print("initial obs:", obs)
+    print("initial state:", state)
     done = False
     steps = 0
 
@@ -17,17 +18,17 @@ def test(env):
     while not done:
         # Sample actions
         # TODO: Key split???
+        keys = jax.random.split(key, env.n_agents + 1)
+        key, subkeys = keys[0], keys[1:]
+        actions = {agent: env.action_space(agent).sample(subkeys[i]) for i, agent in enumerate(env.agents)}
+        print("actions:", actions)
         key, subkey = jax.random.split(key)
-        action = env.action_space(params=env.default_params).sample(key=subkey)
-        # print({agent: env.unwrapped.action_parser[action[agent]] for agent in action})
-        print(action)
-        key, subkey = jax.random.split(key)
-        obs, state, rewards, done, info = env.step(action=action, state=state, key=subkey)
-        print("Step:", steps)
-        print(obs)
-        print(state)
-        print(rewards)
-        print(done)
+        obs, state, rewards, dones, info = env.step(actions=actions, state=state, key=subkey)
+        print("step:", steps)
+        print("obs:", obs)
+        print("state:", state)
+        print("rewards:", rewards)
+        print("dones:", dones)
         input(">>")
         # temp = env.render()
         steps += 1
